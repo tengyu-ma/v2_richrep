@@ -31,6 +31,8 @@ InitFile = os.path.join(ProjDir, 'exps/cache/init_file.pickle')
 InitDf = os.path.join(ProjDir, 'exps/cache/init_df.csv')
 
 HostName = socket.gethostname()
+HostName = HostName.split('.')[-1] if '.' in HostName else HostName
+
 V2DataDirs = {
     'VUSE-103978002': '/home/mat/Data/v2/ModelNet/ModelNet40/DSCDSC/SOFT_C16384',  # Lab Titan X, 10.20.141.250
     'ENG-AIVASLAB1': '/home/mat/Data/v2/ModelNet/ModelNet40/DSCDSC/SOFT_C16384',  # My Lab 1060, 10.20.141.40
