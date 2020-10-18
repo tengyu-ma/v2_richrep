@@ -36,6 +36,7 @@ V2DataDirs = {
     'ENG-AIVASLAB1': '/home/mat/Data/v2/ModelNet/ModelNet40/DSCDSC/SOFT_C16384',  # My Lab 1060, 10.20.141.40
     'VUSE-10397': '/home/mat/Data/v2/ModelNet/ModelNet40/DSCDSC/SOFT_C16384',  # Ryan Lab 1060, 10.20.141.186
     'tengyu-ubuntu': '/media/tengyu/DataU/Data/ModelNet/ModelNet40/DSCDSC/SOFT_C16384',  # Home
+    'vampire': '/data/aivas_lab/Data/V2/SOFT_C16384',  # ACCRE
 }
 
 V2LogDirs = {
@@ -43,6 +44,7 @@ V2LogDirs = {
     'ENG-AIVASLAB1': '/home/mat/Log/V2Exp',  # My Lab 1060, 10.20.141.40
     'VUSE-10397': '/home/mat/Log/V2Exp',  # Ryan Lab 1060, 10.20.141.186
     'tengyu-ubuntu': '/media/tengyu/DataU/Log/V2Exp',  # Home
+    'vampire': '/data/aivas_lab/Log/V2Exp',  # ACCRE
 }
 
 V2DataDir = V2DataDirs[HostName]
