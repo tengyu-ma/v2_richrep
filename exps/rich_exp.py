@@ -40,8 +40,6 @@ def exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode):
 
 
 def main():
-    tr = [f'{i}_0_0' for i in range(12)]
-    v2_conf = [int(i.split('_')[0]) for i in conf.V2Config]
 
     tr = ['0_0_0']
     v2_conf = [1, 2]
