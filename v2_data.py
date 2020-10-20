@@ -40,15 +40,17 @@ class V2Data(torch.utils.data.Dataset):
         if init_df:
             all_files_pickle = pickle.load(open(conf.InitFile, 'rb'))
             all_files = list(map(lambda x: x.replace('{root_placeholder}', self.root), all_files_pickle))
-            all_df = pd.read_csv(conf.InitDf, index_col=0)
+            all_df = pd.read_csv(conf.InitDf)
             all_df['dir'] = all_files
+            all_df = all_df[all_df.se == self.dataset]
         else:
             all_files = sorted(glob.glob(f'{self.root}/*/{self.dataset}/*/*/*.pickle'), key=util.sort_v2_file)
             all_df = pd.DataFrame(
                 list(map(util.sort_v2_file, all_files)),
                 columns=['se', 'ca', 'no', 'tr_x', 'tr_y', 'tr_z', 'v2_conf'],
             )
-            all_df.to_csv(conf.InitDf)
+            all_df['tr'] = all_df.apply(lambda row: f'{row.tr_x}_{row.tr_y}_{row.tr_z}', axis=1)
+            all_df.to_csv(conf.InitDf, index=False)
         return all_df
 
     def _filter(self):
