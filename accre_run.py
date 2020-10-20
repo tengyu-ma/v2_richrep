@@ -19,7 +19,7 @@ if __name__ == '__main__':
     nview_all = len(tr) * len(v2_conf)
     net_name = args.net_name
     pretrained = True
-    batch_size = args.batchsize
+    batch_size = args.batch_size
     mode = args.mode
 
     rich_exp.exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode)
