@@ -128,11 +128,15 @@ class V2Trainer:
             total_loss, total_acc, res_dfs = self.run_one_epoch(epoch, train=True)
             self.print_res(epoch, total_loss, total_acc, start_time, train=True)
             self.save(epoch, total_loss, total_acc, res_dfs, train=True)
+            torch.cuda.empty_cache()
+            gc.collect()
 
             if epoch == 0 or (epoch + 1) % 10 == 0:
                 total_loss, total_acc, res_dfs = self.run_one_epoch(epoch, train=False)
                 self.print_res(epoch, total_loss, total_acc, start_time, train=False)
                 self.save(epoch, total_loss, total_acc, res_dfs, train=False)
+                torch.cuda.empty_cache()
+                gc.collect()
 
     def print_res(self, epoch, total_loss, total_acc, start_time, train=True):
         stage = 'Train' if train else 'Test'

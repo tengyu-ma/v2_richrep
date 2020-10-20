@@ -13,15 +13,14 @@ net_candidates = [
 class RichNet(nn.Module):
     def __init__(self, nview_all, net_name, pretrained, mode):
         super().__init__()
-        assert mode in ['sv', 'rich'], ValueError(f'Invalid mode {mode}')
+        assert mode in ['sv', 'rich_max', 'rich_flatten'], ValueError(f'Invalid mode {mode}')
 
         self.pretrained = pretrained
         self.net_name = net_name
+        self.mode = mode
+        self.nview_all = nview_all
 
         self.feature, self.fc = self.get_classicnet(pretrained, net_name)
-
-        self.nview_all = nview_all
-        self.mode = mode
 
     def get_classicnet(self, pretrained, net_name):
         assert net_name in net_candidates, ValueError(f'Invalid net_name {net_name}')
@@ -33,9 +32,13 @@ class RichNet(nn.Module):
 
         if 'vgg' in net_name:
             in_features = net.classifier[-1].in_features
+            if self.mode == 'rich_flatten':
+                in_features *= self.nview_all
             net.classifier[-1] = nn.Linear(in_features, 40)
         else:
             in_features = net.fc.in_features
+            if self.mode == 'rich_flatten':
+                in_features *= self.nview_all
             net.fc = nn.Linear(in_features, 40)
 
         return nn.Sequential(*list(net.children())[:-1]), net.fc
@@ -43,11 +46,17 @@ class RichNet(nn.Module):
     def forward(self, x):
         x = self.feature(x)
 
-        if self.mode == 'rich':
+        if self.mode == 'rich_max':
             n, c, h, w = x.shape
             bs = n // self.nview_all  # real batch size
             x = x.view([bs, self.nview_all, c, h, w])
             x = torch.max(x, 1)[0].view(bs, -1)
+            y = self.fc(x)
+        if self.mode == 'rich_flatten':
+            n, c, h, w = x.shape
+            x.reshape(n * c, h, w)
+            bs = n // self.nview_all  # real batch size
+            x = x.view([bs, self.nview_all * c * h * w])
             y = self.fc(x)
         else:
             y = self.fc(x)

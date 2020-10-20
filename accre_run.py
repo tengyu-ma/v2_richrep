@@ -5,7 +5,7 @@ from exps import rich_exp
 
 
 if __name__ == '__main__':
-    tr = [f'{i}_0_0' for i in range(12)]
+    tr = [f'{i}_0_0' for i in range(1)]
     v2_conf = [int(i.split('_')[0]) for i in conf.V2Config]
 
     parser = argparse.ArgumentParser(description='Toybox Experiments')

@@ -40,13 +40,16 @@ def exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode):
 
 
 def main():
-
     tr = ['0_0_0']
     v2_conf = [1, 2]
+
+    # tr = [f'{i}_0_0' for i in range(12)]
+    # v2_conf = [int(i.split('_')[0]) for i in conf.V2Config]
+
     nview_all = len(tr) * len(v2_conf)
-    net_name = 'resnext101_32x8d'
+    net_name = 'resnet34'
     pretrained = True
-    mode = 'rich'
+    mode = 'rich_flatten'
 
     exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode)
 
