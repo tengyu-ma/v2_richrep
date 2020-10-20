@@ -66,7 +66,7 @@ class RichNet(nn.Module):
             x = x.view([bs, self.nview_all, c, h, w])
             x = torch.max(x, 1)[0].view(bs, -1)
             y = self.fc(x)
-        if self.mode == 'rich_flatten':
+        if self.mode in ['rich_flatten', 'rich_flatten_extra']:
             n, c, h, w = x.shape
             x.reshape(n * c, h, w)
             bs = n // self.nview_all  # real batch size
