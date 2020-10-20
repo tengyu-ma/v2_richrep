@@ -31,15 +31,29 @@ class RichNet(nn.Module):
             net = getattr(models, net_name)(pretrained=pretrained)
 
         if 'vgg' in net_name:
-            in_features = net.classifier[-1].in_features
-            if self.mode == 'rich_flatten':
-                in_features *= self.nview_all
-            net.classifier[-1] = nn.Linear(in_features, 40)
+            if self.mode == 'rich_flatten_extra':
+                in_features = net.classifier[-1].in_features
+                net.classifier[-1] = nn.Sequential(
+                    nn.Linear(in_features * self.nview_all, in_features),
+                    nn.Linear(in_features, 40)
+                )
+            else:
+                in_features = net.classifier[-1].in_features
+                if self.mode == 'rich_flatten':
+                    in_features *= self.nview_all
+                net.classifier[-1] = nn.Linear(in_features, 40)
         else:
-            in_features = net.fc.in_features
-            if self.mode == 'rich_flatten':
-                in_features *= self.nview_all
-            net.fc = nn.Linear(in_features, 40)
+            if self.mode == 'rich_flatten_extra':
+                in_features = net.fc.in_features
+                net.fc = nn.Sequential(
+                    nn.Linear(in_features * self.nview_all, in_features),
+                    nn.Linear(in_features, 40)
+                )
+            else:
+                in_features = net.fc.in_features
+                if self.mode == 'rich_flatten':
+                    in_features *= self.nview_all
+                net.fc = nn.Linear(in_features, 40)
 
         return nn.Sequential(*list(net.children())[:-1]), net.fc
 
