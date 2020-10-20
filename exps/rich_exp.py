@@ -10,7 +10,7 @@ from exps.v2trainer import V2Trainer
 torch.backends.cudnn.benchmark = True
 
 
-def exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode):
+def exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode):
     net = RichNet(nview_all=nview_all, net_name=net_name, pretrained=pretrained, mode=mode)
     net.cuda()
 
@@ -18,7 +18,7 @@ def exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode):
     loss_func = nn.CrossEntropyLoss()
     hyper_p = util.HyperP(
         lr=0.5,
-        batch_size=1,
+        batch_size=batch_size,
         num_workers=0,
         epochs=300,
         preload=False,
@@ -50,8 +50,9 @@ def main():
     net_name = 'resnet34'
     pretrained = True
     mode = 'rich_flatten'
+    batch_size = 1
 
-    exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode)
+    exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode)
 
 
 if __name__ == '__main__':
