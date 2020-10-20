@@ -16,6 +16,6 @@ if __name__ == '__main__':
     nview_all = len(tr) * len(v2_conf)
     net_name = args.net_name
     pretrained = True
-    mode = 'rich'
+    mode = 'rich_flatten_extra'
 
     rich_exp.exp_main(tr, v2_conf, nview_all, net_name, pretrained, mode)

@@ -13,7 +13,7 @@ net_candidates = [
 class RichNet(nn.Module):
     def __init__(self, nview_all, net_name, pretrained, mode):
         super().__init__()
-        assert mode in ['sv', 'rich_max', 'rich_flatten'], ValueError(f'Invalid mode {mode}')
+        assert mode in ['sv', 'rich_max', 'rich_flatten', 'rich_flatten_extra'], ValueError(f'Invalid mode {mode}')
 
         self.pretrained = pretrained
         self.net_name = net_name
