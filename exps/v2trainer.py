@@ -26,7 +26,7 @@ class V2Trainer:
         self.hyper_p = hyper_p
 
         self.exp_v2data = f'{tr}-{v2_conf}'
-        self.exp_name = f'{mode}-{net_name}-{tr}-{v2_conf}'
+        self.exp_name = f'{net.mode}-{net_name}-{tr}-{v2_conf}'
         self.log_dir = f'{conf.V2LogDir}/{self.exp_name}'
         self.train_loader, self.test_loader = self.get_dataloader()
 
