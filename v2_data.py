@@ -11,13 +11,14 @@ import torch
 import torch.utils.data
 import trimesh
 import logging
+import torchvision.transforms as transforms
 
 from PIL import Image
 from itertools import product
 
 
 class V2Data(torch.utils.data.Dataset):
-    def __init__(self, root, dataset, tr, v2_conf, mode='sv', preload=True, transform=None, nview=12, init_df=True):
+    def __init__(self, root, dataset, tr, v2_conf, mode='sv', preload=True, transform=None, nview=12, init_df=True, channel6=False):
         assert mode in ['sv', 'rich'], ValueError(f'Invalid mode {mode}')
 
         self.root = root
@@ -29,6 +30,7 @@ class V2Data(torch.utils.data.Dataset):
         self.v2_conf = v2_conf
         self.df = self._filter()
 
+        self.channel6 = channel6
         self.mode = mode
         self.transform = transform
         self.nview = nview
@@ -68,33 +70,87 @@ class V2Data(torch.utils.data.Dataset):
         return loaded_data
 
     def _getitem(self, index):
-        if self.mode == 'sv':
-            info = self.df.loc[index]
-            label = conf.ModelNet40Categories.index(info.ca)
+        if self.channel6:
+            if self.mode == 'sv':
+                info = self.df.loc[index]
+                label = conf.ModelNet40Categories.index(info.ca)
 
-            img = Image.fromarray((pickle.load(open(info.dir, 'rb'))[:, :, :3] / 2 * 255).astype(np.uint8))
-            if self.transform is not None:
-                img = self.transform(img)
-            path = info.dir
-        elif self.mode == 'rich':
-            info = self.index_df.loc[index]
-            label = conf.ModelNet40Categories.index(info.ca)
+                img = Image.fromarray((pickle.load(open(info.dir, 'rb'))[:, :, :3] / 2 * 255).astype(np.uint8))
+                img_convex = Image.fromarray((pickle.load(open(info.dir, 'rb'))[:, :, 3:] / 2 * 255).astype(np.uint8))
+                if self.transform is not None:
+                    img = self.transform(img)
+                    img_convex = self.transform(img_convex)
+                img = torch.cat([img, img_convex], dim=0)
+                path = info.dir
+            elif self.mode == 'rich':
+                info = self.index_df.loc[index]
+                label = conf.ModelNet40Categories.index(info.ca)
 
-            rich_views = pd.DataFrame(
-                product(self.tr, self.v2_conf),
-                columns=['tr', 'v2_conf']
-            )
-            rich_views['ca'] = info.ca
-            rich_views['no'] = info.no
-            rich_df = pd.merge(self.df, rich_views, on=['ca', 'no', 'tr', 'v2_conf'])
-            imgs = [Image.fromarray((pickle.load(open(d, 'rb'))[:, :, :3] / 2 * 255).astype(np.uint8)) for d in rich_df.dir]
-            if self.transform is not None:
-                imgs = [self.transform(img) for img in imgs]
+                rich_views = pd.DataFrame(
+                    product(self.tr, self.v2_conf),
+                    columns=['tr', 'v2_conf']
+                )
+                rich_views['ca'] = info.ca
+                rich_views['no'] = info.no
+                rich_df = pd.merge(self.df, rich_views, on=['ca', 'no', 'tr', 'v2_conf'])
+                imgs = [Image.fromarray((pickle.load(open(d, 'rb'))[:, :, :3] / 2 * 255).astype(np.uint8)) for d in rich_df.dir]
+                imgs_convex = [Image.fromarray((pickle.load(open(d, 'rb'))[:, :, 3:] / 2 * 255).astype(np.uint8)) for d in rich_df.dir]
 
-            img = torch.stack(imgs).float()
-            path = '>'.join(rich_df.dir)
+                if self.transform is not None:
+                    transform_for_first3channel = transforms.Compose([
+                        *self.transform.transforms[:2],
+                        transforms.Normalize(
+                            mean=self.transform.transforms[2].mean[:3],
+                            std=self.transform.transforms[2].std[:3],
+                        )
+                    ])
+
+                    transform_for_last3channel = transforms.Compose([
+                        *self.transform.transforms[:2],
+                        transforms.Normalize(
+                            mean=self.transform.transforms[2].mean[3:],
+                            std=self.transform.transforms[2].std[3:],
+                        )
+                    ])
+
+                    imgs = [transform_for_first3channel(img) for img in imgs]
+                    imgs_convex = [transform_for_last3channel(img) for img in imgs_convex]
+
+                img = torch.stack(imgs).float()
+                img_convex = torch.stack(imgs_convex).float()
+
+                img = torch.cat([img, img_convex], dim=1)
+                path = '>'.join(rich_df.dir)
+            else:
+                raise ValueError(f'invalid mode {self.mode}')
         else:
-            raise ValueError(f'invalid mode {self.mode}')
+            if self.mode == 'sv':
+                info = self.df.loc[index]
+                label = conf.ModelNet40Categories.index(info.ca)
+
+                img = Image.fromarray((pickle.load(open(info.dir, 'rb'))[:, :, :3] / 2 * 255).astype(np.uint8))
+                if self.transform is not None:
+                    img = self.transform(img)
+                path = info.dir
+            elif self.mode == 'rich':
+                info = self.index_df.loc[index]
+                label = conf.ModelNet40Categories.index(info.ca)
+
+                rich_views = pd.DataFrame(
+                    product(self.tr, self.v2_conf),
+                    columns=['tr', 'v2_conf']
+                )
+                rich_views['ca'] = info.ca
+                rich_views['no'] = info.no
+                rich_df = pd.merge(self.df, rich_views, on=['ca', 'no', 'tr', 'v2_conf'])
+                imgs = [Image.fromarray((pickle.load(open(d, 'rb'))[:, :, :3] / 2 * 255).astype(np.uint8)) for d in rich_df.dir]
+                if self.transform is not None:
+                    imgs = [self.transform(img) for img in imgs]
+
+                img = torch.stack(imgs).float()
+                path = '>'.join(rich_df.dir)
+            else:
+                raise ValueError(f'invalid mode {self.mode}')
 
         return img, label, path
 

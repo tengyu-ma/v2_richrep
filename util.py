@@ -6,12 +6,13 @@ import pandas as pd
 
 
 class HyperP:
-    def __init__(self, lr, batch_size, num_workers, epochs, preload):
+    def __init__(self, lr, batch_size, num_workers, epochs, preload, channel6):
         self.lr = lr
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.epochs = epochs
         self.preload = preload
+        self.channel6 = channel6
 
 
 def get_mean_std(data_loader):

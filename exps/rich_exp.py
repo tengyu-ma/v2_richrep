@@ -10,8 +10,8 @@ from exps.v2trainer import V2Trainer
 torch.backends.cudnn.benchmark = True
 
 
-def exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode):
-    net = RichNet(nview_all=nview_all, net_name=net_name, pretrained=pretrained, mode=mode)
+def exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode, channel6, resume):
+    net = RichNet(nview_all=nview_all, net_name=net_name, pretrained=pretrained, mode=mode, channel6=channel6)
     net.cuda()
 
     optimizer = torch.optim.Adam(net.parameters(), lr=5e-05, weight_decay=0.0)
@@ -22,6 +22,7 @@ def exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode):
         num_workers=0,
         epochs=300,
         preload=False,
+        channel6=channel6,
     )
 
     tb_trainer = V2Trainer(
@@ -33,7 +34,8 @@ def exp_main(tr, v2_conf, nview_all, net_name, pretrained, batch_size, mode):
         net_name=net_name,
         optimizer=optimizer,
         loss_func=loss_func,
-        hyper_p=hyper_p
+        hyper_p=hyper_p,
+        resume=resume,
     )
     print(f'=== {tb_trainer.exp_name} ===')
     tb_trainer.train_test_save()

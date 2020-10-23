@@ -26,6 +26,23 @@ ModelNet40Categories = [
     'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox'
 ]
 
+ModelNet37Categories = [
+    'airplane', 'bathtub', 'bed', 'bench', 'bookshelf',
+    'bottle', 'bowl', 'car', 'chair', 'cone',
+    'cup', 'curtain', 'desk_table', 'door', 'dresser',
+    'flower_pot_plant_vase', 'glass_box', 'guitar', 'keyboard', 'lamp',
+    'laptop', 'mantel', 'monitor', 'night_stand', 'person',
+    'piano', 'radio', 'range_hood', 'sink',
+    'sofa', 'stairs', 'stool', 'tent',
+    'toilet', 'tv_stand', 'wardrobe', 'xbox'
+]
+
+LowHighPairs = {}
+for i, x in enumerate(ModelNet40Categories):
+    for j, k in enumerate(ModelNet37Categories):
+        if x in k:
+            LowHighPairs[i] = j
+
 ProjDir = Path(__file__).parent
 InitFile = os.path.join(ProjDir, 'exps/cache/init_file.pickle')
 InitDf = os.path.join(ProjDir, 'exps/cache/init_df.csv')

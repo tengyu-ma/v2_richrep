@@ -14,21 +14,37 @@ from v2_data import V2Data
 
 
 class V2Trainer:
-    def __init__(self, tr, v2_conf, img_size, net, net_name, mode, optimizer, loss_func, hyper_p):
+    def __init__(self, tr, v2_conf, img_size, net, net_name, mode, optimizer, loss_func, hyper_p, resume):
         self.tr = tr
         self.v2_conf = v2_conf
         self.img_size = img_size
-        self.net = net
+
         self.net_name = net_name
         self.mode = mode
         self.optimizer = optimizer
         self.loss_func = loss_func
         self.hyper_p = hyper_p
+        self.resume = resume
 
-        self.exp_v2data = f'{tr}-{v2_conf}'
-        self.exp_name = f'batchsize_{hyper_p.batch_size}-{net.mode}-{net_name}-{tr}-{v2_conf}'
+        self.exp_v2data = f'channel6_{str(hyper_p.channel6).lower()}-{tr}-{v2_conf}'
+        self.exp_name = f'channel6_{str(hyper_p.channel6).lower()}-batchsize_{hyper_p.batch_size}-{net.mode}-{net_name}-{tr}-{v2_conf}'
         self.log_dir = f'{conf.V2LogDir}/{self.exp_name}'
         self.train_loader, self.test_loader = self.get_dataloader()
+
+        if resume:
+            state_folder = f'{self.log_dir}/state'
+            if not os.path.exists(state_folder) or len(os.listdir(state_folder)) == 0:
+                self.epoch_i = 0
+                self.net = net
+            else:
+                state_pkl = sorted(os.listdir())[-1]
+                self.epoch_i = int(state_pkl.split('-')[0]) + 1
+                print(f'Resuming training from state {state_pkl}, epoch {self.epoch_i}')
+                net.load_state_dict(torch.load(f'{self.log_dir}/state/{state_pkl}'))
+                self.net = net
+        else:
+            self.epoch_i = 0
+            self.net = net
 
     def get_dataloader(self):
         Data = V2Data
@@ -49,6 +65,7 @@ class V2Trainer:
                 tr=self.tr,
                 v2_conf=self.v2_conf,
                 mode='sv',
+                channel6=self.hyper_p.channel6,
                 preload=self.hyper_p.preload,
                 transform=transforms.Compose([
                     transforms.Resize(self.img_size),
@@ -73,7 +90,14 @@ class V2Trainer:
             mean_std_cache[self.exp_v2data] = mean, std
             pickle.dump(mean_std_cache, open(conf.V2DataMeanStdCacheFile, 'wb'))
 
-        transform = transforms.Compose([
+
+        train_transform = transforms.Compose([
+            transforms.Resize(self.img_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ])
+
+        test_transform = transforms.Compose([
             transforms.Resize(self.img_size),
             transforms.ToTensor(),
             transforms.Normalize(mean, std),
@@ -86,8 +110,9 @@ class V2Trainer:
                 tr=self.tr,
                 v2_conf=self.v2_conf,
                 mode=self.mode,
+                channel6=self.hyper_p.channel6,
                 preload=self.hyper_p.preload,
-                transform=transform,
+                transform=train_transform,
             ),
             batch_size=self.hyper_p.batch_size,
             shuffle=True,
@@ -103,8 +128,9 @@ class V2Trainer:
                 tr=self.tr,
                 v2_conf=self.v2_conf,
                 mode=self.mode,
+                channel6=self.hyper_p.channel6,
                 preload=self.hyper_p.preload,
-                transform=transform,
+                transform=test_transform,
             ),
             batch_size=self.hyper_p.batch_size,
             shuffle=False,
@@ -124,7 +150,7 @@ class V2Trainer:
 
     def train_test_save(self):
         start_time = datetime.now()
-        for epoch in range(self.hyper_p.epochs):
+        for epoch in range(self.epoch_i, self.hyper_p.epochs):
             total_loss, total_acc, res_dfs = self.run_one_epoch(epoch, train=True)
             self.print_res(epoch, total_loss, total_acc, start_time, train=True)
             self.save(epoch, total_loss, total_acc, res_dfs, train=True)

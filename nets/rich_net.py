@@ -11,7 +11,7 @@ net_candidates = [
 
 
 class RichNet(nn.Module):
-    def __init__(self, nview_all, net_name, pretrained, mode):
+    def __init__(self, nview_all, net_name, pretrained, mode, channel6):
         super().__init__()
         assert mode in ['sv', 'rich_max', 'rich_flatten', 'rich_flatten_extra'], ValueError(f'Invalid mode {mode}')
 
@@ -19,10 +19,14 @@ class RichNet(nn.Module):
         self.net_name = net_name
         self.mode = mode
         self.nview_all = nview_all
+        self.channel6 = channel6
 
-        self.feature, self.fc = self.get_classicnet(pretrained, net_name)
+        if mode == 'rich_flatten_extra':
+            self.feature, self.fc1, self.fc2 = self.get_classicnet(pretrained, net_name, channel6)
+        else:
+            self.feature, self.fc = self.get_classicnet(pretrained, net_name, channel6)
 
-    def get_classicnet(self, pretrained, net_name):
+    def get_classicnet(self, pretrained, net_name, channel6=False):
         assert net_name in net_candidates, ValueError(f'Invalid net_name {net_name}')
 
         if 'inception' in net_name:
@@ -30,32 +34,51 @@ class RichNet(nn.Module):
         else:
             net = getattr(models, net_name)(pretrained=pretrained)
 
-        if 'vgg' in net_name:
-            if self.mode == 'rich_flatten_extra':
-                in_features = net.classifier[-1].in_features
-                net.classifier[-1] = nn.Sequential(
-                    nn.Linear(in_features * self.nview_all, in_features),
-                    nn.Linear(in_features, 40)
-                )
+        if channel6:
+            if 'resnet' in net_name or 'resnext' in net_name:
+                net_conv1 = net.conv1
+            elif 'inception' in net_name:
+                net_conv1 = net.Conv2d_1a_3x3.conv
+            elif 'vgg' in net_name:
+                net_conv1 = net.features[0]
             else:
-                in_features = net.classifier[-1].in_features
-                if self.mode == 'rich_flatten':
-                    in_features *= self.nview_all
-                net.classifier[-1] = nn.Linear(in_features, 40)
-        else:
-            if self.mode == 'rich_flatten_extra':
-                in_features = net.fc.in_features
-                net.fc = nn.Sequential(
-                    nn.Linear(in_features * self.nview_all, in_features),
-                    nn.Linear(in_features, 40)
-                )
-            else:
-                in_features = net.fc.in_features
-                if self.mode == 'rich_flatten':
-                    in_features *= self.nview_all
-                net.fc = nn.Linear(in_features, 40)
+                raise ValueError(f'Invalid net name {net_name}')
 
-        return nn.Sequential(*list(net.children())[:-1]), net.fc
+            net_conv1_weight = torch.cat(2 * [net_conv1.weight], dim=1)
+            channel6_conv1 = nn.Conv2d(
+                6,
+                net_conv1.out_channels,
+                kernel_size=net_conv1.kernel_size,
+                stride=net_conv1.stride,
+                padding=net_conv1.padding,
+                bias=False,
+            )
+            channel6_conv1.weight = nn.Parameter(net_conv1_weight)
+
+            if 'resnet' in net_name or 'resnext' in net_name:
+                net.conv1 = channel6_conv1
+            elif 'inception' in net_name:
+                net.Conv2d_1a_3x3.conv = channel6_conv1
+            elif 'vgg' in net_name:
+                net.features[0] = channel6_conv1
+            else:
+                raise ValueError(f'Invalid net name {net_name}')
+
+        if 'vgg' in net_name:
+            in_features = net.classifier[-1].in_features
+        else:
+            in_features = net.fc.in_features
+
+        if self.mode == 'rich_flatten_extra':
+            fc1 = nn.Linear(in_features * self.nview_all, 37)
+            fc2 = nn.Linear(37, 40)
+            return nn.Sequential(*list(net.children())[:-1]), fc1, fc2
+        elif self.mode == 'rich_flatten':
+            fc = nn.Linear(in_features * self.nview_all, 40)
+        else:
+            fc = nn.Linear(in_features, 40)
+
+        return nn.Sequential(*list(net.children())[:-1]), fc
 
     def forward(self, x):
         x = self.feature(x)
@@ -66,13 +89,23 @@ class RichNet(nn.Module):
             x = x.view([bs, self.nview_all, c, h, w])
             x = torch.max(x, 1)[0].view(bs, -1)
             y = self.fc(x)
-        if self.mode in ['rich_flatten', 'rich_flatten_extra']:
+            return y
+        if self.mode == 'rich_flatten':
             n, c, h, w = x.shape
             x.reshape(n * c, h, w)
             bs = n // self.nview_all  # real batch size
             x = x.view([bs, self.nview_all * c * h * w])
             y = self.fc(x)
+            return y
+        if self.mode == 'rich_flatten_extra':
+            n, c, h, w = x.shape
+            x.reshape(n * c, h, w)
+            bs = n // self.nview_all  # real batch size
+            x = x.view([bs, self.nview_all * c * h * w])
+
+            y_low = self.fc1(x)  # 37 lower class as to combine (flower_pot, vase, plant) and (desk and table)
+            y_high = self.fc2(y_low)  # the original 40 class
+            return y_high
         else:
             y = self.fc(x)
-
-        return y
+            return y
